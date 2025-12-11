@@ -4,15 +4,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hyperelastic Model Fitter</title>
+  <title>Hyperelastic Model Fitter — Stable</title>
 
   <!-- Tailwind CSS (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Chart.js v4 (UMD build) -->
+  <!-- Chart.js v4 (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <!-- MathJax for LaTeX -->
+  <!-- MathJax for LaTeX rendering -->
   <script>
     window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
   </script>
@@ -24,9 +24,9 @@
       theme: {
         extend: {
           colors: {
-            primary: '#1E3A8A',
-            secondary: '#34D399',
-            accent: '#F59E0B',
+            primary: '#1E3A8A',    /* indigo-900 */
+            secondary: '#34D399',  /* emerald-400 */
+            accent: '#F59E0B',     /* amber-500 */
           },
           fontFamily: {
             sans: ['Inter', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
@@ -37,14 +37,17 @@
   </script>
 
   <style>
-    /* Keep charts compact and consistent */
-    .chart-wrap {
-      max-width: 760px;        /* limit width so it doesn't fill the whole page */
+    /* Sidebar width to evoke a tool-like feel */
+    .sidebar { width: 240px; }
+
+    /* Fixed chart sizing: no more “gradually shrinking” */
+    .chart-frame {
+      width: 720px;          /* explicit width */
+      max-width: 100%;       /* still shrink sensibly on small screens */
     }
-    .chart-canvas {
-      height: 16rem;           /* fixed height = Tailwind h-64 */
-      width: 100%;             /* responsive width within the wrap */
-    }
+    /* We set explicit canvas dimensions via attributes (below). CSS height isn't needed. */
+
+    /* Monospace input */
     #dataInputArea {
       min-height: 180px;
       max-height: 360px;
@@ -53,25 +56,85 @@
       font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       line-height: 1.25rem;
     }
+
+    .card {
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1);
+    }
   </style>
 </head>
 
-<body class="bg-gray-50 font-sans text-gray-800 p-4 sm:p-6">
-  <div class="max-w-6xl mx-auto">
-    <header class="text-center mb-8">
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-primary">Hyperelastic Model Fitter</h1>
-      <p class="text-sm text-gray-600">Compact, readable plots</p>
-    </header>
+<body class="bg-gray-50 font-sans text-gray-800">
+  <!-- Top bar -->
+  <header class="bg-white border-b border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">HF</span>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-extrabold text-primary">Hyperelastic Model Fitter</h1>
+          <p class="text-xs text-gray-600">Compact charts • Reliable parameters • MCalibration‑style foundation</p>
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left: Input & Controls -->
-      <section class="lg:col-span-1 bg-white p-6 rounded-xl shadow">
-        <h2 class="text-xl font-semibold mb-3 text-primary">1. Input Data</h2>
-        <p class="text-sm text-gray-600 mb-2">
-          Paste pairs (Stretch λ vs. Nominal Stress σ). Delimiters: spaces, tabs, commas, or new lines.
-        </p>
+  <!-- Main layout: sidebar + workspace -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8">
+    <!-- Sidebar (MCalibration-inspired) -->
+    <aside class="sidebar bg-white p-4 rounded-xl card">
+      <h2 class="text-lg font-semibold text-primary">Datasets</h2>
+      <ul class="mt-3 space-y-2">
+        <li class="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200">
+          <div class="flex items-center gap-2">
+            <span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+            <span class="text-sm font-medium">Uniaxial Tension</span>
+          </div>
+          <span class="text-xs text-gray-500">Active</span>
+        </li>
+      </ul>
+      <div class="mt-4 space-y-2">
+        <button class="w-full px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200">Add dataset (placeholder)</button>
+        <button class="w-full px-3 py-2 text-sm rounded-lg bg-white border border-gray-300 hover:bg-gray-50">Remove selected (placeholder)</button>
+      </div>
 
-        <textarea id="dataInputArea" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent text-sm"
+      <hr class="my-4" />
+      <div class="text-xs text-gray-600 space-y-2">
+        <p><strong>Tip:</strong> Keep λ ≥ 1 to avoid singularities in the linearization.</p>
+        <p>For multi‑mode (biaxial/planar/shear), use Ogden/Yeoh and non‑linear solvers.</p>
+      </div>
+    </aside>
+
+    <!-- Workspace -->
+    <section class="space-y-8">
+      <!-- Data & model card -->
+      <div class="bg-white p-6 rounded-xl card">
+        <h2 class="text-2xl font-semibold text-primary mb-4">Data & Model</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Input type</label>
+            <select id="inputType" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+              <option value="stretch">Stretch (λ)</option>
+              <option value="strain">Engineering strain (ε = ΔL/L)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Stress unit</label>
+            <select id="stressUnit" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+              <option value="MPa">MPa</option>
+              <option value="kPa">kPa</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Model</label>
+            <select id="modelSelector" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+              <option value="mooney_rivlin" selected>2‑Term Mooney–Rivlin</option>
+              <option value="neo_hookean">Neo‑Hookean</option>
+            </select>
+          </div>
+        </div>
+
+        <textarea id="dataInputArea"
+          class="w-full mt-4 p-3 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent text-sm"
           placeholder="# λ   σ(MPa)
 1.05  0.20
 1.10  0.45
@@ -82,70 +145,91 @@
 3.50  5.50
 4.00  8.00"></textarea>
 
-        <div class="mt-4">
-          <h2 class="text-xl font-semibold mb-2 text-primary">2. Model</h2>
-          <select id="modelSelector" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
-            <option value="mooney_rivlin" selected>2‑Term Mooney–Rivlin</option>
-            <option value="neo_hookean">Neo‑Hookean</option>
-          </select>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="sampleButton" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm">Load sample</button>
+          <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm cursor-pointer">
+            <input type="file" id="csvFile" accept=".csv,.txt" class="hidden" />
+            <span>Upload CSV/TXT</span>
+          </label>
+          <button id="clearButton" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm">Clear</button>
+
+          <button id="fitButton" class="ml-auto px-4 py-2 bg-secondary text-white font-bold rounded-xl hover:bg-emerald-500 transition">
+            FIT MATERIAL MODEL
+          </button>
         </div>
 
-        <button id="fitButton" class="mt-4 w-full py-2.5 px-4 bg-secondary text-white font-bold rounded-xl hover:bg-emerald-500 transition">
-          FIT MATERIAL MODEL
-        </button>
-      </section>
+        <div id="parseSummary" class="mt-4 text-sm text-gray-600"></div>
+      </div>
 
-      <!-- Right: Charts + Results -->
-      <section class="lg:col-span-2 space-y-6">
-        <!-- Chart area (COMPACT) -->
-        <div class="bg-white p-6 rounded-xl shadow">
-          <h2 class="text-xl font-semibold mb-3 text-primary">3. Stress–Stretch (compact)</h2>
-          <div class="chart-wrap mx-auto">
-            <canvas id="stressStrainChart" class="chart-canvas" aria-label="Stress vs Stretch chart"></canvas>
-          </div>
+      <!-- Chart card (fixed size) -->
+      <div class="bg-white p-6 rounded-xl card">
+        <h2 class="text-2xl font-semibold text-primary mb-3">Stress–Stretch (fixed size)</h2>
+        <div class="chart-frame mx-auto">
+          <!-- Explicit size: prevents progressive shrink -->
+          <canvas id="stressStrainChart" width="720" height="360" aria-label="Stress vs Stretch chart"></canvas>
         </div>
+        <div class="mt-3 text-xs text-gray-500">Chart is intentionally compact (720×360 px). No auto-resize.</div>
+      </div>
 
-        <!-- Results -->
-        <div class="bg-white p-6 rounded-xl shadow">
-          <h2 class="text-xl font-semibold mb-3 text-primary">4. Fitted Parameters</h2>
-          <div id="resultsOutput" class="space-y-4">
-            <p class="text-gray-500">Press “FIT MATERIAL MODEL” to see results.</p>
-          </div>
+      <!-- Results card -->
+      <div class="bg-white p-6 rounded-xl card">
+        <h2 class="text-2xl font-semibold text-primary mb-3">Fitted Parameters</h2>
+        <div id="resultsOutput" class="space-y-4">
+          <p class="text-gray-500">Press <em>FIT MATERIAL MODEL</em> to see results.</p>
         </div>
-      </section>
-    </main>
+        <div id="abaqusSnippet" class="mt-6"></div>
+      </div>
+    </section>
+  </main>
 
-    <footer class="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
-      <p>Mooney–Rivlin uses linear least squares; Neo‑Hookean uses the average of the linearized term. More complex models require non‑linear optimization.</p>
-    </footer>
-  </div>
+  <!-- Footer -->
+  <footer class="mt-2 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+    <p>Mooney–Rivlin via linear least squares; Neo‑Hookean via average of the linearized term. For Ogden/Yeoh/Arruda–Boyce/Marlow add a non‑linear solver.</p>
+  </footer>
 
   <script>
-    // Chart globals
+    // -----------------------------
+    // Globals
+    // -----------------------------
     let stressStrainChart = null;
     const CHART_COLOR_DATA  = '#F59E0B';
     const CHART_COLOR_MODEL = '#1E3A8A';
 
-    // Parse data
-    function parseData(dataText) {
-      const lines = (dataText || '').trim().split(/\r?\n/);
+    // -----------------------------
+    // Parsing & helpers
+    // -----------------------------
+    function toStretch(val, inputType) {
+      return (inputType === 'stretch') ? val : (1 + val);
+    }
+    function stressScale(unit) { return 1.0; }
+
+    function parseData(text, inputType, stressUnit) {
+      const lines = (text || '').trim().split(/\r?\n/);
       const data = [];
+      let skipped = 0;
+
       for (const raw of lines) {
         const line = raw.trim();
-        if (!line || line.startsWith('#')) continue;
+        if (!line || line.startsWith('#')) { skipped++; continue; }
         const parts = line.split(/[\s,;]+/).filter(Boolean);
-        if (parts.length < 2) continue;
-        const lambda = Number(parts[0]);
-        const sigma  = Number(parts[1]);
-        if (Number.isFinite(lambda) && Number.isFinite(sigma) && lambda >= 1.0) {
-          data.push({ lambda, sigma });
-        }
+        if (parts.length < 2) { skipped++; continue; }
+
+        const a = Number(parts[0]), b = Number(parts[1]);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) { skipped++; continue; }
+
+        const lambda = toStretch(a, inputType);
+        const sigma  = b * stressScale(stressUnit);
+
+        if (lambda >= 1.0) data.push({ lambda, sigma });
+        else skipped++;
       }
-      data.sort((a, b) => a.lambda - b.lambda);
-      return data;
+      data.sort((x, y) => x.lambda - y.lambda);
+      return { data, skipped, total: lines.length };
     }
 
+    // -----------------------------
     // Models
+    // -----------------------------
     function neoHookeanStress(lambda, C1) {
       if (lambda < 1.0) return 0;
       return 2 * C1 * (lambda - Math.pow(lambda, -2));
@@ -155,9 +239,13 @@
       return 2 * (lambda - Math.pow(lambda, -2)) * (C1 + C2 * Math.pow(lambda, -1));
     }
 
-    // LLS for 2‑term MR: Y = C1 + C2 X , with Y = σ/[2(λ - λ^-2)], X = λ^-1
+    // -----------------------------
+    // Linear least squares (MR)
+    // Y = C1 + C2 X, with Y = σ / [2(λ - λ^-2)], X = λ^-1
+    // -----------------------------
     function linearLeastSquares(data) {
       if (!data || data.length < 2) return { C1: 0, C2: 0, R2: 0 };
+
       const pts = data.map(p => {
         const t = p.lambda - Math.pow(p.lambda, -2);
         const Y = t > 1e-8 ? p.sigma / (2 * t) : 0;
@@ -167,36 +255,48 @@
 
       const n = pts.length;
       let sumX=0,sumY=0,sumXX=0,sumXY=0;
-      pts.forEach(p => { sumX+=p.X; sumY+=p.Y; sumXX+=p.X*p.X; sumXY+=p.X*p.Y; });
-      const meanX = sumX/n, meanY = sumY/n;
+      for (const p of pts) { sumX+=p.X; sumY+=p.Y; sumXX+=p.X*p.X; sumXY+=p.X*p.Y; }
 
+      const meanX = sumX/n, meanY = sumY/n;
       const num = n*sumXY - sumX*sumY;
       const den = n*sumXX - sumX*sumX;
 
       let C2 = 0, C1 = meanY;
       if (Math.abs(den) > 1e-12) { C2 = num/den; C1 = meanY - C2*meanX; }
 
-      // R² on linearized space
+      // R² in linearized space
       let sst=0,sse=0;
-      pts.forEach(p => { const yp = C1 + C2*p.X; sst += Math.pow(p.Y-meanY,2); sse += Math.pow(p.Y-yp,2); });
+      for (const p of pts) {
+        const yp = C1 + C2*p.X;
+        sst += Math.pow(p.Y - meanY, 2);
+        sse += Math.pow(p.Y - yp, 2);
+      }
       const R2 = (sst > 1e-12) ? Math.max(0, Math.min(1, 1 - sse/sst)) : 1.0;
-
       return { C1, C2, R2 };
     }
 
-    function updateChart(experimentalData, modelCurve, stressUnit='Units') {
-      const ctx = document.getElementById('stressStrainChart');
+    // -----------------------------
+    // Chart (fixed size, no responsive)
+    // -----------------------------
+    function renderChart(experimentalData, modelCurve, stressUnit='Units') {
+      const canvas = document.getElementById('stressStrainChart');
 
-      const datasets = [
-        { label: 'Experimental', data: experimentalData, borderColor: CHART_COLOR_DATA, backgroundColor: CHART_COLOR_DATA, pointRadius: 3, showLine: false, type: 'scatter' },
-        { label: 'Model',        data: modelCurve,      borderColor: CHART_COLOR_MODEL, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.25, showLine: true, type: 'line' }
-      ];
+      // Destroy if exists to avoid resize side-effects
+      if (stressStrainChart) {
+        stressStrainChart.destroy();
+        stressStrainChart = null;
+      }
+
+      const data = {
+        datasets: [
+          { label: 'Experimental', data: experimentalData, borderColor: CHART_COLOR_DATA, backgroundColor: CHART_COLOR_DATA, pointRadius: 3, showLine: false, type: 'scatter' },
+          { label: 'Model',        data: modelCurve,      borderColor: CHART_COLOR_MODEL, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.2, showLine: true, type: 'line' }
+        ]
+      };
 
       const options = {
-        responsive: true,
-        maintainAspectRatio: true,  // <<< keeps it compact
-        aspectRatio: 1.6,           // <<< width/height ratio, matches fixed height above
-        interaction: { mode: 'nearest', intersect: false },
+        responsive: false,          // <<< fixed size: uses canvas width/height attributes
+        animation: false,           // eliminates any progressive tweak
         plugins: {
           legend: { position: 'top' },
           title:  { display: true, text: 'Nominal Stress (σ) vs Stretch (λ)', font: { size: 14, weight: 'bold' } },
@@ -216,13 +316,15 @@
         }
       };
 
-      if (stressStrainChart) { stressStrainChart.data.datasets = datasets; stressStrainChart.options = options; stressStrainChart.update(); }
-      else { stressStrainChart = new Chart(ctx, { data: { datasets }, options }); }
+      stressStrainChart = new Chart(canvas, { type: 'scatter', data, options });
     }
 
+    // -----------------------------
+    // Results
+    // -----------------------------
     function displayResults(modelName, params, R2) {
       const outputDiv = document.getElementById('resultsOutput');
-      const isMR = modelName === 'mooney_rivlin';
+      const isMR = (modelName === 'mooney_rivlin');
       const modelTitle = isMR ? '2‑Term Mooney–Rivlin' : 'Neo‑Hookean';
       const modelEq   = isMR
         ? '\\(\\sigma = 2(\\lambda - \\lambda^{-2})(C_1 + C_2\\,\\lambda^{-1})\\)'
@@ -234,11 +336,7 @@
           <h3 class="text-lg font-bold text-primary">${modelTitle}</h3>
           <p class="text-sm text-gray-700">${modelEq}</p>
         </div>
-        <div class="p-3 rounded-xl bg-green-50 border-l-4 border-secondary">
-          <p class="text-sm font-semibold text-secondary">R²</p>
-          <p class="text-xl font-extrabold text-secondary">${R2.toFixed(4)}</p>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
           <div class="p-3 rounded-xl bg-gray-50 border-l-4 border-gray-300">
             <p class="text-xs font-medium text-gray-700">C₁</p>
             <p class="text-lg font-bold text-gray-800">${params.C1.toFixed(6)}</p>
@@ -249,29 +347,63 @@
             <p class="text-lg font-bold text-gray-800">${params.C2.toFixed(6)}</p>
           </div>` : ''}
           <div class="p-3 rounded-xl bg-yellow-50 border-l-4 border-amber-400">
-            <p class="text-xs font-medium text-gray-700">Small‑strain G</p>
+            <p class="text-xs font-medium text-gray-700">Small‑strain shear modulus, G</p>
             <p class="text-lg font-bold text-gray-800">${G_small.toFixed(6)}</p>
           </div>
         </div>
+        <div class="mt-3 p-3 rounded-xl bg-green-50 border-l-4 border-secondary">
+          <p class="text-sm font-semibold text-secondary">R²</p>
+          <p class="text-xl font-extrabold text-secondary">${R2.toFixed(4)}</p>
+        </div>
       `;
+
       if (window.MathJax?.typesetPromise) MathJax.typesetPromise([outputDiv]).catch(()=>{});
     }
 
+    function renderAbaqusSnippet(modelName, params, stressUnit) {
+      const div = document.getElementById('abaqusSnippet');
+      const isMR = (modelName === 'mooney_rivlin');
+      const txt = isMR
+        ? `*MATERIAL, NAME=HYPERELASTIC_MR
+*HYPERELASTIC, MOONEY-RIVLIN
+${params.C1.toFixed(6)}, ${params.C2.toFixed(6)}
+** incompressible; add D1 for compressibility`
+        : `*MATERIAL, NAME=HYPERELASTIC_NH
+*HYPERELASTIC, NEO HOOKE
+${params.C1.toFixed(6)}
+** incompressible; add volumetric term (D1) if needed`;
+
+      div.innerHTML = `
+        <div class="mt-4">
+          <h3 class="text-sm font-semibold text-gray-800">Abaqus keywords (${stressUnit}):</h3>
+          <pre class="mt-2 p-3 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-auto">${txt}</pre>
+        </div>`;
+    }
+
+    // -----------------------------
+    // Driver
+    // -----------------------------
     function runFitter() {
-      const dataText = document.getElementById('dataInputArea').value;
-      const model    = document.getElementById('modelSelector').value;
-      const data     = parseData(dataText);
+      const inputType   = document.getElementById('inputType').value;
+      const stressUnit  = document.getElementById('stressUnit').value;
+      const model       = document.getElementById('modelSelector').value;
+      const dataText    = document.getElementById('dataInputArea').value;
+
+      const { data, skipped, total } = parseData(dataText, inputType, stressUnit);
+      document.getElementById('parseSummary').innerHTML =
+        `<div class="p-3 rounded-lg bg-blue-50 border border-blue-100">
+          <span class="text-sm text-gray-800">Parsed <strong>${data.length}</strong> rows. Skipped <strong>${skipped}</strong>. Total lines: ${total}.</span>
+        </div>`;
 
       if (!data || data.length < 2) {
         document.getElementById('resultsOutput').innerHTML =
           '<div class="p-3 rounded-lg bg-red-100 text-red-800 border border-red-200">Error: Provide ≥ 2 valid points (λ ≥ 1).</div>';
-        updateChart([], []);
+        renderChart([], [], stressUnit);
+        document.getElementById('abaqusSnippet').innerHTML = '';
         return;
       }
 
-      let params = { C1: 0, C2: 0 };
-      let R2 = 0;
-      let stressFn;
+      let params = { C1: 0, C2: 0 }, R2 = 0, stressFn;
 
       if (model === 'mooney_rivlin') {
         const res = linearLeastSquares(data);
@@ -279,35 +411,82 @@
         R2 = res.R2;
         stressFn = (l) => mooneyRivlinStress(l, params.C1, params.C2);
       } else {
+        // Neo-Hookean: C1 = average of linearized Y
         const Ys = data.map(p => {
           const t = p.lambda - Math.pow(p.lambda, -2);
           return t > 1e-8 ? p.sigma / (2 * t) : 0;
         });
-        const C1 = Ys.reduce((s,v)=>s+v,0) / Ys.length;
+        const C1 = Ys.reduce((s, v) => s + v, 0) / Ys.length;
         params = { C1: C1, C2: 0 };
         stressFn = (l) => neoHookeanStress(l, params.C1);
 
-        const meanSigma = data.reduce((s,p)=>s+p.sigma,0) / data.length;
+        // R² on σ
+        const meanSigma = data.reduce((s, p) => s + p.sigma, 0) / data.length;
         let sst=0,sse=0;
-        data.forEach(p => { const pred = neoHookeanStress(p.lambda, C1); sst += Math.pow(p.sigma - meanSigma,2); sse += Math.pow(p.sigma - pred,2); });
-        R2 = (sst > 1e-12) ? Math.max(0, Math.min(1, 1 - sse/sst)) : 1.0;
+        for (const p of data) {
+          const pred = neoHookeanStress(p.lambda, C1);
+          sst += Math.pow(p.sigma - meanSigma, 2);
+          sse += Math.pow(p.sigma - pred, 2);
+        }
+        R2 = (sst > 1e-12) ? Math.max(0, Math.min(1, 1 - (sse / sst))) : 1.0;
       }
 
+      // Model curve (compact domain)
       const maxLambda = data[data.length - 1].lambda * 1.05;
       const modelCurve = [];
       for (let l = 1.0; l <= maxLambda + 1e-9; l += 0.05) {
         modelCurve.push({ x: l, y: stressFn(l) });
       }
 
-      const experimental = data.map(p => ({ x: p.lambda, y: p.sigma }));
-      updateChart(experimental, modelCurve, 'Units');
+      const experimentalData = data.map(p => ({ x: p.lambda, y: p.sigma }));
+
+      renderChart(experimentalData, modelCurve, stressUnit);
       displayResults(model, params, R2);
+      renderAbaqusSnippet(model, params, stressUnit);
     }
 
+    // -----------------------------
+    // Wiring
+    // -----------------------------
     document.addEventListener('DOMContentLoaded', () => {
+      const dataArea = document.getElementById('dataInputArea');
+      document.getElementById('sampleButton').addEventListener('click', () => {
+        dataArea.value = `# λ   σ(MPa)
+1.05  0.20
+1.10  0.45
+1.20  0.80
+1.50  1.50
+2.00  2.50
+3.00  4.00
+3.50  5.50
+4.00  8.00`;
+        runFitter();
+      });
+
+      document.getElementById('clearButton').addEventListener('click', () => {
+        dataArea.value = '';
+        document.getElementById('parseSummary').innerHTML = '';
+        renderChart([], [], 'Units');
+        document.getElementById('resultsOutput').innerHTML = '<p class="text-gray-500">Paste data and click FIT.</p>';
+        document.getElementById('abaqusSnippet').innerHTML = '';
+      });
+
+      document.getElementById('csvFile').addEventListener('change', (evt) => {
+        const file = evt.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => { dataArea.value = String(e.target.result || ''); runFitter(); };
+        reader.readAsText(file);
+      });
+
       document.getElementById('fitButton').addEventListener('click', runFitter);
-      // Run once with whatever is in the box to verify sizing
-      runFitter();
+
+      // First render
+      if (!dataArea.value.trim()) {
+        document.getElementById('sampleButton').click();
+      } else {
+        runFitter();
+      }
     });
   </script>
 </body>
