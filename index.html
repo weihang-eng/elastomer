@@ -1,431 +1,716 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hyperelastic Model Fitter</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.tailwindcss.com%2F&data=05%7C02%7Cweihang.chen%40technipfmc.com%7Ce9837019b1364610959f08de38478b6d%7C0804c95193a0405d80e4fa87c7551d6a%7C0%7C0%7C639010077087580892%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=S8EcmM5fabAp1naqbRgiKz0QvM67YpVHTiV4AT%2BQbVU%3D&reserved=0"></script>
-    <!-- Load Chart.js for plotting -->
-    <script src="https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Fchart.js%403.7.1%2Fdist%2Fchart.min.js&data=05%7C02%7Cweihang.chen%40technipfmc.com%7Ce9837019b1364610959f08de38478b6d%7C0804c95193a0405d80e4fa87c7551d6a%7C0%7C0%7C639010077087604651%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=U9ZAEXirVdPchb65TZ1g%2BxhIT2sCrPTm%2Bv%2B1qyyFVm8%3D&reserved=0"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'primary': '#1E3A8A',
-                        'secondary': '#34D399',
-                        'accent': '#F59E0B',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hyperelastic Model Fitter</title>
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js (v4) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- MathJax for LaTeX rendering -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+
+  <!-- Tailwind theme extension -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1E3A8A',   /* indigo-900 */
+            secondary: '#34D399', /* emerald-400 */
+            accent: '#F59E0B',    /* amber-500 */
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
         }
-    </script>
-    <style>
-        @import url('https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Ffonts.googleapis.com%2Fcss2%3Ffamily%3DInter%3Awght%40400%3B600%3B700%26display%3Dswap&data=05%7C02%7Cweihang.chen%40technipfmc.com%7Ce9837019b1364610959f08de38478b6d%7C0804c95193a0405d80e4fa87c7551d6a%7C0%7C0%7C639010077087620851%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=3dMfGI2onN37Qw55%2Bl09l57WIV8roXKvj0M5KQzsKkQ%3D&reserved=0');
-        /* Custom scrollbar styling for the data input area */
-        #dataInputArea {
-            min-height: 200px;
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre;
-            font-family: monospace;
-            line-height: 1.25rem;
-        }
-        /* Style for the parameter result blocks */
-        .param-result {
-            transition: all 0.3s ease-in-out;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-        }
-        .param-result:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-        }
-    </style>
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbar for data area */
+    #dataInputArea {
+      min-height: 220px;
+      max-height: 420px;
+      overflow-y: auto;
+      white-space: pre;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      line-height: 1.25rem;
+    }
+    .param-result {
+      transition: transform .2s ease, box-shadow .2s ease;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1);
+    }
+    .param-result:hover { transform: translateY(-1px); }
+    .sr-only-focusable:focus { position: static !important; width: auto !important; height: auto !important; clip: auto !important; }
+  </style>
 </head>
-<body class="bg-gray-50 font-sans text-gray-800 p-4 sm:p-8">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl sm:text-5xl font-extrabold text-primary mb-2">Hyperelastic Model Fitter</h1>
-            <p class="text-xl text-gray-600">Fit Material Parameters from Uniaxial Stress-Strain Data</p>
-        </header>
-
-        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Input & Controls Column -->
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
-                <h2 class="text-2xl font-semibold mb-4 text-primary">1. Input Data</h2>
-
-                <p class="text-sm text-gray-500 mb-3">Paste or type your data (Stretch ($\lambda$) vs. Nominal Stress ($\sigma$ in MPa/kPa) pairs), separated by spaces, tabs, or new lines.</p>
-                <textarea id="dataInputArea"
-                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent text-sm"
-                          placeholder="Example:&#10;1.05 0.2&#10;1.1 0.45&#10;1.2 0.8&#10;1.5 1.5&#10;2.0 2.5&#10;3.0 4.0">1.05 0.2
-1.1 0.45
-1.2 0.8
-1.5 1.5
-2.0 2.5
-3.0 4.0
-3.5 5.5
-4.0 8.0</textarea>
-
-                <div class="mt-6">
-                    <h2 class="text-2xl font-semibold mb-4 text-primary">2. Model Selection</h2>
-                    <select id="modelSelector" class="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-accent focus:border-accent text-gray-700">
-                        <option value="mooney_rivlin">2-Term Mooney-Rivlin</option>
-                        <option value="neo_hookean">Neo-Hookean</option>
-                    </select>
-                </div>
-
-                <button id="fitButton"
-                        class="mt-6 w-full py-3 px-4 bg-secondary text-white font-bold rounded-xl hover:bg-emerald-500 transition duration-300 shadow-md">
-                    FIT MATERIAL MODEL
-                </button>
-            </div>
-
-            <!-- Results Column -->
-            <div class="lg:col-span-2">
-                <!-- Plot Area -->
-                <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-                    <h2 class="text-2xl font-semibold mb-4 text-primary">3. Stress-Strain Comparison</h2>
-                    <canvas id="stressStrainChart" class="w-full h-80 sm:h-96"></canvas>
-                </div>
-
-                <!-- Parameters Output -->
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-semibold mb-4 text-primary">4. Fitted Parameters</h2>
-                    <div id="resultsOutput" class="space-y-4">
-                        <p class="text-gray-500">Press "FIT MATERIAL MODEL" to see results.</p>
-                        <!-- Parameter boxes will be injected here -->
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <footer class="mt-10 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-            <p>Hyperelastic fitting tool. Note: 2-Term Mooney-Rivlin uses Linear Least Squares (LLS). More complex models (e.g., Ogden) require non-linear optimization.</p>
-        </footer>
+<body class="bg-gray-50 font-sans text-gray-800">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">HF</span>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-extrabold text-primary">Hyperelastic Model Fitter</h1>
+          <p class="text-sm text-gray-600">Fit material parameters from uniaxial test data</p>
+        </div>
+      </div>
+      <nav class="hidden md:block">
+        <ul class="flex gap-6 text-sm">
+          <li><a class="text-gray-700 hover:text-primary" href="#step-1">Step 1: Data</a></li>
+          <li><a class="text-gray-700 hover:text-primary" href="#step-2">Step 2: Model</a></li>
+          <li><a class="text-gray-700 hover:text-primary" href="#step-3">Step 3: Compare</a></li>
+          <li><a class="text-gray-700 hover:text-primary" href="#step-4">Step 4: Parameters</a></li>
+        </ul>
+      </nav>
     </div>
+  </header>
 
-    <script>
-        // Global variables for Chart.js instance and model parameters
-        let stressStrainChart = null;
-        const CHART_COLOR_DATA = '#F59E0B'; // Accent/Orange
-        const CHART_COLOR_MODEL = '#1E3A8A'; // Primary/Blue
+  <!-- Main -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Left column: Inputs & Controls -->
+    <section id="step-1" class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+      <h2 class="text-2xl font-semibold mb-4 text-primary">Step 1 — Input Data</h2>
+      <p class="text-sm text-gray-600 mb-3">
+        Paste or load your data pairs. Choose either <strong>Stretch, λ</strong> or <strong>Engineering strain, ε</strong>.
+        Stress can be in MPa or kPa (select below). Delimiters: spaces, tabs, commas, or new lines.
+      </p>
 
-        // Utility function to parse the data input
-        function parseData(dataText) {
-            const lines = dataText.trim().split('\n');
-            const data = [];
-            for (const line of lines) {
-                // Use a regex to handle various delimiters (space, tab, comma)
-                const parts = line.trim().split(/[\s,]+/).filter(p => p.length > 0);
-                if (parts.length === 2) {
-                    const lambda = parseFloat(parts[0]);
-                    const sigma = parseFloat(parts[1]);
-                    if (!isNaN(lambda) && !isNaN(sigma) && lambda >= 1.0) {
-                        data.push({ lambda, sigma });
-                    }
-                }
-            }
-            if (data.length < 2) {
-                console.error("Not enough valid data points. Minimum 2 required.");
-                return null;
-            }
-            // Sort data by stretch ratio (lambda)
-            return data.sort((a, b) => a.lambda - b.lambda);
+      <!-- Input type toggles -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <label class="block text-sm font-medium text-gray-700" for="inputType">Input type</label>
+        <select id="inputType" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+          <option value="stretch">Stretch (λ)</option>
+          <option value="strain">Engineering strain (ε = ΔL/L)</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <label class="block text-sm font-medium text-gray-700" for="stressUnit">Stress unit</label>
+        <select id="stressUnit" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent">
+          <option value="MPa">MPa</option>
+          <option value="kPa">kPa</option>
+        </select>
+      </div>
+
+      <!-- Data textarea -->
+      <textarea id="dataInputArea"
+        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent text-sm"
+        placeholder="Example:
+# λ   σ(MPa)
+1.05  0.20
+1.10  0.45
+1.20  0.80
+1.50  1.50
+2.00  2.50
+3.00  4.00
+3.50  5.50
+4.00  8.00"></textarea>
+
+      <!-- Actions: sample, CSV upload, clear -->
+      <div class="mt-3 flex flex-wrap gap-3">
+        <button id="sampleButton" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm">Load sample</button>
+
+        <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm cursor-pointer">
+          <input type="file" id="csvFile" accept=".csv,.txt" class="hidden" />
+          <span>Upload CSV/TXT</span>
+        </label>
+
+        <button id="clearButton" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm">Clear</button>
+      </div>
+
+      <!-- Parse summary / validation -->
+      <div id="parseSummary" class="mt-4 text-sm text-gray-600"></div>
+
+      <hr class="my-6" />
+
+      <!-- Step 2 — Model selection -->
+      <section id="step-2">
+        <h2 class="text-2xl font-semibold mb-4 text-primary">Step 2 — Model Selection</h2>
+        <div class="space-y-2" role="radiogroup" aria-label="Model selection">
+          <label class="flex items-center gap-3">
+            <input type="radio" name="model" value="mooney_rivlin" class="h-4 w-4 text-primary" checked />
+            <span class="text-gray-800">2‑Term Mooney–Rivlin</span>
+          </label>
+          <label class="flex items-center gap-3">
+            <input type="radio" name="model" value="neo_hookean" class="h-4 w-4 text-primary" />
+            <span class="text-gray-800">Neo‑Hookean</span>
+          </label>
+        </div>
+
+        <button id="fitButton"
+          class="mt-6 w-full py-3 px-4 bg-secondary text-white font-bold rounded-xl hover:bg-emerald-500 transition shadow-md">
+          FIT MATERIAL MODEL
+        </button>
+
+        <p class="mt-3 text-xs text-gray-500">
+          Mooney–Rivlin is solved via Linear Least Squares; Neo‑Hookean uses the average of the linearized form.
+          More complex models (e.g., Ogden, Yeoh, Arruda–Boyce, Marlow) require non‑linear optimization.
+        </p>
+      </section>
+    </section>
+
+    <!-- Right column: Chart & Parameters -->
+    <section class="lg:col-span-2 space-y-8">
+      <!-- Step 3 — Plot area -->
+      <section id="step-3" class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4 text-primary">Step 3 — Stress–Stretch Comparison</h2>
+        <div class="relative h-80 sm:h-96">
+          <canvas id="stressStrainChart" class="w-full h-full" aria-label="Stress vs Stretch chart"></canvas>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="downloadPNG" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm">
+            Download chart (.png)
+          </button>
+          <button id="resetZoom" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm">
+            Reset zoom
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 4 — Parameters -->
+      <section id="step-4" class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4 text-primary">Step 4 — Fitted Parameters</h2>
+        <div id="resultsOutput" class="space-y-4">
+          <p class="text-gray-500">Press <em>FIT MATERIAL MODEL</em> to see results.</p>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button id="copyParams" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm">Copy parameters</button>
+          <button id="downloadJSON" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm">Download JSON</button>
+          <button id="downloadCSV" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm">Download CSV</button>
+        </div>
+
+        <!-- Optional: Abaqus *HYPERELASTIC snippet -->
+        <div id="abaqusSnippet" class="mt-6">
+          <!-- filled programmatically -->
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-4 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+    <p>
+      Hyperelastic fitting tool. For best results, include data from multiple deformation modes when available.
+      Ensure unit consistency. Incompressibility assumptions may not hold for all polymers.
+    </p>
+  </footer>
+
+  <!-- Script -->
+  <script>
+    // -----------------------------
+    // Globals
+    // -----------------------------
+    let stressStrainChart = null;
+    const CHART_COLOR_DATA  = '#F59E0B'; // Accent/Orange
+    const CHART_COLOR_MODEL = '#1E3A8A'; // Primary/Blue
+
+    // Persisted keys
+    const LS_KEY_DATA       = 'hf:data';
+    const LS_KEY_INPUT_TYPE = 'hf:inputType';
+    const LS_KEY_STRESS_UNIT= 'hf:stressUnit';
+    const LS_KEY_MODEL      = 'hf:model';
+
+    // -----------------------------
+    // Utility: parsing & helpers
+    // -----------------------------
+    function toStretch(lambdaOrStrain, inputType) {
+      if (inputType === 'stretch') return lambdaOrStrain;
+      // engineering strain ε -> λ = 1 + ε
+      return 1 + lambdaOrStrain;
+    }
+
+    function stressScale(unit) {
+      // Internally we fit using the units as provided.
+      // We only use this scale to normalize label text and optional conversions if needed.
+      // (kept as 1.0 for now; hook for future kPa->MPa etc.)
+      return 1.0;
+    }
+
+    function parseData(text, inputType, stressUnit) {
+      const lines = (text || '').trim().split(/\r?\n/);
+      const data = [];
+      let skipped = 0;
+
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) { skipped++; continue; }
+
+        const parts = line.split(/[\s,;]+/).filter(Boolean);
+        if (parts.length < 2) { skipped++; continue; }
+
+        const a = Number(parts[0]);
+        const b = Number(parts[1]);
+
+        const val1 = Number.isFinite(a) ? a : NaN;
+        const val2 = Number.isFinite(b) ? b : NaN;
+
+        if (Number.isNaN(val1) || Number.isNaN(val2)) { skipped++; continue; }
+
+        const lambda = toStretch(val1, inputType);
+        const sigma  = val2 * stressScale(stressUnit);
+
+        // Avoid near-singular behavior at λ ~ 1 in linearization
+        if (lambda >= 1.0) {
+          data.push({ lambda, sigma });
+        } else {
+          skipped++;
         }
+      }
 
-        /**
-         * Hyperelastic Model Functions (Nominal Stress)
-         * Stress is calculated for Uniaxial Tension: lambda_1 = lambda, lambda_2 = lambda_3 = lambda^-0.5
-         */
+      // sort by λ
+      data.sort((a, b) => a.lambda - b.lambda);
 
-        // Neo-Hookean (Special case of Mooney-Rivlin where C2 = 0)
-        // Sigma = 2 * C1 * (lambda - lambda^-2)
-        function neoHookeanStress(lambda, C1) {
-            if (lambda < 1.0) return 0; // Stress is zero at stretch < 1
-            return 2 * C1 * (lambda - Math.pow(lambda, -2));
-        }
+      return { data, skipped, total: lines.length };
+    }
 
-        // 2-Term Mooney-Rivlin
-        // Sigma = 2 * (lambda - lambda^-2) * (C1 + C2 * lambda^-1)
-        function mooneyRivlinStress(lambda, C1, C2) {
-            if (lambda < 1.0) return 0;
-            return 2 * (lambda - Math.pow(lambda, -2)) * (C1 + C2 * Math.pow(lambda, -1));
-        }
+    // -----------------------------
+    // Hyperelastic stress models
+    // -----------------------------
+    function neoHookeanStress(lambda, C1) {
+      if (lambda < 1.0) return 0;
+      return 2 * C1 * (lambda - Math.pow(lambda, -2));
+    }
 
-        /**
-         * Linear Least Squares (LLS) Solver for 2-Term Mooney-Rivlin
-         * The model can be linearized as: Y = C1 + C2 * X
-         * Where: Y = Sigma / ( 2 * (lambda - lambda^-2) )
-         * And: X = lambda^-1
-         */
-        function linearLeastSquares(data) {
-            if (data.length < 2) return { C1: 0, C2: 0, error: 'Insufficient data points (min 2).' };
+    function mooneyRivlinStress(lambda, C1, C2) {
+      if (lambda < 1.0) return 0;
+      return 2 * (lambda - Math.pow(lambda, -2)) * (C1 + C2 * Math.pow(lambda, -1));
+    }
 
-            // 1. Prepare data for LLS (Y = C1 + C2*X)
-            const points = data.map(point => {
-                const lambda_inv = 1 / point.lambda;
-                const lambda_term = point.lambda - Math.pow(point.lambda, -2);
-                // Avoid division by zero/near zero for lambda very close to 1
-                const Y = lambda_term > 1e-6 ? point.sigma / (2 * lambda_term) : 0;
-                return { X: lambda_inv, Y: Y };
-            });
+    // -----------------------------
+    // Linear least squares (MR 2-term)
+    // Y = C1 + C2 * X,  with  Y = σ / [2(λ - λ^-2)], X = λ^-1
+    // -----------------------------
+    function linearLeastSquares(data) {
+      if (!data || data.length < 2) {
+        return { C1: 0, C2: 0, R2: 0, error: 'Insufficient data points (min 2).' };
+      }
 
-            // 2. Calculate sums for LLS
-            let sumX = 0, sumY = 0, sumXX = 0, sumXY = 0;
-            const n = points.length;
+      const pts = data.map(p => {
+        const term = p.lambda - Math.pow(p.lambda, -2);
+        const Y = term > 1e-8 ? p.sigma / (2 * term) : 0;
+        const X = 1 / p.lambda;
+        return { X, Y };
+      });
 
-            for (const p of points) {
-                sumX += p.X;
-                sumY += p.Y;
-                sumXX += p.X * p.X;
-                sumXY += p.X * p.Y;
-            }
+      const n = pts.length;
+      let sumX = 0, sumY = 0, sumXX = 0, sumXY = 0;
+      for (const p of pts) { sumX += p.X; sumY += p.Y; sumXX += p.X*p.X; sumXY += p.X*p.Y; }
 
-            const meanX = sumX / n;
-            const meanY = sumY / n;
+      const meanX = sumX / n;
+      const meanY = sumY / n;
 
-            // 3. Solve for C2 (slope) and C1 (intercept)
-            const numerator = (n * sumXY) - (sumX * sumY);
-            const denominator = (n * sumXX) - (sumX * sumX);
+      const num = n*sumXY - sumX*sumY;
+      const den = n*sumXX - sumX*sumX;
 
-            let C2 = 0;
-            let C1 = 0;
-            let R2 = 0; // Coefficient of determination
+      let C2 = 0, C1 = meanY;
+      if (Math.abs(den) > 1e-12) {
+        C2 = num / den;
+        C1 = meanY - C2 * meanX;
+      }
 
-            if (Math.abs(denominator) > 1e-9) {
-                C2 = numerator / denominator; // Slope
-                C1 = meanY - C2 * meanX;      // Intercept
-            } else {
-                // Perfect vertical line case, use mean Y as C1 (or handle error)
-                C1 = meanY;
-                C2 = 0;
-            }
+      // R^2
+      let SST = 0, SSE = 0;
+      for (const p of pts) {
+        const pred = C1 + C2 * p.X;
+        SST += Math.pow(p.Y - meanY, 2);
+        SSE += Math.pow(p.Y - pred, 2);
+      }
+      const R2 = (SST > 1e-12) ? Math.max(0, Math.min(1, 1 - (SSE / SST))) : 1.0;
 
-            // 4. Calculate R-squared value (measures goodness of fit)
-            let SST = 0; // Total sum of squares
-            let SSE = 0; // Error sum of squares
+      return { C1, C2, R2 };
+    }
 
-            for (const p of points) {
-                // Predicted Y value: Y_pred = C1 + C2 * X
-                const Y_pred = C1 + C2 * p.X;
+    // -----------------------------
+    // Fitter driver
+    // -----------------------------
+    function runFitter() {
+      const inputType  = document.getElementById('inputType').value;
+      const stressUnit = document.getElementById('stressUnit').value;
+      const dataText   = document.getElementById('dataInputArea').value;
+      const model      = document.querySelector('input[name="model"]:checked').value;
 
-                SST += Math.pow(p.Y - meanY, 2);
-                SSE += Math.pow(p.Y - Y_pred, 2);
-            }
+      const { data, skipped, total } = parseData(dataText, inputType, stressUnit);
+      renderParseSummary({ parsed: data.length, skipped, total });
 
-            if (SST > 1e-9) {
-                R2 = 1 - (SSE / SST);
-            } else {
-                R2 = 1.0; // Perfect fit if all Y values are the same
-            }
-            R2 = Math.max(0, Math.min(1, R2)); // Clamp R2 between 0 and 1
+      // Persist
+      try {
+        localStorage.setItem(LS_KEY_DATA, dataText);
+        localStorage.setItem(LS_KEY_INPUT_TYPE, inputType);
+        localStorage.setItem(LS_KEY_STRESS_UNIT, stressUnit);
+        localStorage.setItem(LS_KEY_MODEL, model);
+      } catch {}
 
-            return { C1: C1, C2: C2, R2: R2 };
-        }
+      if (!data || data.length < 2) {
+        showError('Please provide at least two valid data points (λ ≥ 1.0).');
+        updateChart([], []);
+        displayResults(model, { C1: 0, C2: 0 }, 0);
+        renderAbaqusSnippet(model, { C1: 0, C2: 0 }, stressUnit);
+        return;
+      }
 
-        // Main fitting and plotting function
-        function runFitter() {
-            const dataText = document.getElementById('dataInputArea').value;
-            const model = document.getElementById('modelSelector').value;
-            const data = parseData(dataText);
+      let params = { C1: 0, C2: 0 };
+      let R2 = 0;
+      let stressFunction = null;
 
-            if (!data) {
-                document.getElementById('resultsOutput').innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">Error: Please provide at least two valid data points (Stretch > 1.0).</div>';
-                if (stressStrainChart) stressStrainChart.data.datasets = [];
-                if (stressStrainChart) stressStrainChart.update();
-                return;
-            }
-
-            let params = {};
-            let R2 = 0;
-            let stressFunction;
-
-            if (model === 'mooney_rivlin') {
-                // Use LLS for 2-Term Mooney-Rivlin
-                const result = linearLeastSquares(data);
-                params = { C1: result.C1, C2: result.C2 };
-                R2 = result.R2;
-                stressFunction = (l) => mooneyRivlinStress(l, params.C1, params.C2);
-            } else if (model === 'neo_hookean') {
-                // Neo-Hookean: C2 = 0. We can simplify the LLS and only solve for C1.
-                // Y = C1. The best C1 is simply the average of Y.
-                const points = data.map(point => {
-                    const lambda_term = point.lambda - Math.pow(point.lambda, -2);
-                    return lambda_term > 1e-6 ? point.sigma / (2 * lambda_term) : 0;
-                });
-
-                const C1_avg = points.reduce((sum, val) => sum + val, 0) / points.length;
-                params = { C1: C1_avg, C2: 0 };
-                stressFunction = (l) => neoHookeanStress(l, params.C1);
-
-                // Calculate R2 based on the full stress-strain curve for Neo-Hookean
-                const meanSigma = data.reduce((sum, p) => sum + p.sigma, 0) / data.length;
-                let SST = 0;
-                let SSE = 0;
-                for (const p of data) {
-                    const sigma_pred = neoHookeanStress(p.lambda, C1_avg);
-                    SST += Math.pow(p.sigma - meanSigma, 2);
-                    SSE += Math.pow(p.sigma - sigma_pred, 2);
-                }
-                R2 = (SST > 1e-9) ? (1 - (SSE / SST)) : 1.0;
-                R2 = Math.max(0, Math.min(1, R2));
-
-            }
-
-            // Calculate Model Curve Data for Plotting
-            const maxLambda = data[data.length - 1].lambda * 1.1; // Extend the curve a bit
-            const modelCurve = [];
-            for (let l = 1.0; l <= maxLambda; l += 0.05) {
-                modelCurve.push({ x: l, y: stressFunction(l) });
-            }
-
-            // Prepare Data for Chart.js
-            const experimentalData = data.map(p => ({ x: p.lambda, y: p.sigma }));
-
-            updateChart(experimentalData, modelCurve);
-            displayResults(model, params, R2);
-        }
-
-        // Function to update the Chart.js visualization
-        function updateChart(experimentalData, modelCurve) {
-            const ctx = document.getElementById('stressStrainChart').getContext('2d');
-
-            const newDatasets = [
-                {
-                    label: 'Experimental Data',
-                    data: experimentalData,
-                    borderColor: CHART_COLOR_DATA,
-                    backgroundColor: CHART_COLOR_DATA,
-                    pointRadius: 5,
-                    type: 'scatter', // Use scatter for discrete data points
-                },
-                {
-                    label: 'Fitted Model Curve',
-                    data: modelCurve,
-                    borderColor: CHART_COLOR_MODEL,
-                    backgroundColor: 'rgba(0,0,0,0)',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.4,
-                    showLine: true,
-                    fill: false,
-                    type: 'line', // Use line for the continuous model curve
-                }
-            ];
-
-            if (stressStrainChart) {
-                // Update existing chart
-                stressStrainChart.data.datasets = newDatasets;
-                stressStrainChart.update();
-            } else {
-                // Initialize new chart
-                stressStrainChart = new Chart(ctx, {
-                    data: {
-                        datasets: newDatasets,
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            },
-                            title: {
-                                display: true,
-                                text: 'Nominal Stress ($\sigma$) vs. Stretch ($\lambda$)',
-                                font: { size: 16 }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                type: 'linear',
-                                position: 'bottom',
-                                title: {
-                                    display: true,
-                                    text: 'Stretch, λ (Dimensionless)',
-                                    font: { weight: 'bold' }
-                                },
-                                min: 1.0,
-                            },
-                            y: {
-                                type: 'linear',
-                                title: {
-                                    display: true,
-                                    text: 'Nominal Stress, σ (Units of Data)',
-                                    font: { weight: 'bold' }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-        // Function to display the calculated parameters
-        function displayResults(modelName, params, R2) {
-            const outputDiv = document.getElementById('resultsOutput');
-            const modelTitle = modelName === 'mooney_rivlin' ? '2-Term Mooney-Rivlin' : 'Neo-Hookean';
-            const modelEquation = modelName === 'mooney_rivlin'
-                ? '$$\\sigma = 2(\\lambda - \\lambda^{-2})(C_1 + C_2 \\lambda^{-1})$$'
-                : '$$\\sigma = 2C_1 (\\lambda - \\lambda^{-2})$$';
-
-            let parametersHtml = `
-                <div class="param-result p-4 bg-blue-50 border-l-4 border-primary rounded-xl">
-                    <h3 class="text-lg font-bold text-primary">${modelTitle} Model</h3>
-                    <p class="text-sm text-gray-600">${modelEquation}</p>
-                </div>
-            `;
-
-            // Display R-squared
-            parametersHtml += `
-                <div class="param-result p-4 bg-green-50 border-l-4 border-secondary rounded-xl">
-                    <p class="text-lg font-semibold text-secondary">Goodness of Fit ($R^2$):</p>
-                    <p class="text-2xl font-extrabold text-secondary">${R2.toFixed(4)}</p>
-                    <p class="text-xs text-gray-500">Value close to 1.0 is a perfect fit.</p>
-                </div>
-            `;
-
-            // Display C1
-            parametersHtml += `
-                <div class="param-result p-4 bg-gray-100 border-l-4 border-gray-400 rounded-xl">
-                    <p class="text-lg font-semibold">C1:</p>
-                    <p class="text-2xl font-extrabold text-gray-700">${params.C1.toFixed(4)}</p>
-                    <p class="text-xs text-gray-500">First-order shear modulus related parameter (same units as stress).</p>
-                </div>
-            `;
-
-            // Display C2 (only for Mooney-Rivlin)
-            if (modelName === 'mooney_rivlin') {
-                parametersHtml += `
-                    <div class="param-result p-4 bg-gray-100 border-l-4 border-gray-400 rounded-xl">
-                        <p class="text-lg font-semibold">C2:</p>
-                        <p class="text-2xl font-extrabold text-gray-700">${params.C2.toFixed(4)}</p>
-                        <p class="text-xs text-gray-500">Second-order shear modulus related parameter (same units as stress).</p>
-                    </div>
-                `;
-            }
-
-            outputDiv.innerHTML = parametersHtml;
-        }
-
-        // Attach event listeners after the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            const fitButton = document.getElementById('fitButton');
-            fitButton.addEventListener('click', runFitter);
-
-            // Run the fitter with the default example data on load
-            runFitter();
+      if (model === 'mooney_rivlin') {
+        const res = linearLeastSquares(data);
+        params = { C1: res.C1, C2: res.C2 };
+        R2     = res.R2;
+        stressFunction = (l) => mooneyRivlinStress(l, params.C1, params.C2);
+      } else {
+        // Neo-Hookean: C1 = average of linearized Y
+        const Ys = data.map(p => {
+          const term = p.lambda - Math.pow(p.lambda, -2);
+          return term > 1e-8 ? p.sigma / (2 * term) : 0;
         });
+        const C1 = Ys.reduce((s, v) => s + v, 0) / Ys.length;
+        params = { C1, C2: 0 };
+        stressFunction = (l) => neoHookeanStress(l, params.C1);
 
-    </script>
+        // R^2 based on σ directly
+        const meanSigma = data.reduce((s, p) => s + p.sigma, 0) / data.length;
+        let SST = 0, SSE = 0;
+        for (const p of data) {
+          const pred = neoHookeanStress(p.lambda, C1);
+          SST += Math.pow(p.sigma - meanSigma, 2);
+          SSE += Math.pow(p.sigma - pred, 2);
+        }
+        R2 = (SST > 1e-12) ? Math.max(0, Math.min(1, 1 - (SSE / SST))) : 1.0;
+      }
+
+      // Model curve
+      const maxLambda = data[data.length - 1].lambda * 1.1;
+      const modelCurve = [];
+      for (let l = 1.0; l <= maxLambda + 1e-9; l += 0.05) {
+        modelCurve.push({ x: l, y: stressFunction(l) });
+      }
+
+      // Experimental points
+      const experimentalData = data.map(p => ({ x: p.lambda, y: p.sigma }));
+
+      updateChart(experimentalData, modelCurve, stressUnit);
+      displayResults(model, params, R2);
+      renderAbaqusSnippet(model, params, stressUnit);
+    }
+
+    // -----------------------------
+    // UI: summaries, errors
+    // -----------------------------
+    function renderParseSummary({ parsed, skipped, total }) {
+      const div = document.getElementById('parseSummary');
+      div.innerHTML = `
+        <div class="p-3 rounded-lg bg-blue-50 border border-blue-100">
+          <span class="text-sm text-gray-800">
+            Parsed <strong>${parsed}</strong> rows. Skipped <strong>${skipped}</strong> (comments/invalid). Total lines: ${total}.
+          </span>
+        </div>`;
+    }
+
+    function showError(msg) {
+      const out = document.getElementById('resultsOutput');
+      out.innerHTML = `
+        <div class="p-3 rounded-lg bg-red-100 text-red-800 border border-red-200">
+          <strong>Error:</strong> ${msg}
+        </div>`;
+    }
+
+    // -----------------------------
+    // Chart
+    // -----------------------------
+    function updateChart(experimentalData, modelCurve, stressUnit='Units of Data') {
+      const ctx = document.getElementById('stressStrainChart');
+
+      const datasets = [
+        {
+          label: 'Experimental data',
+          data: experimentalData,
+          borderColor: CHART_COLOR_DATA,
+          backgroundColor: CHART_COLOR_DATA,
+          pointRadius: 4,
+          pointHoverRadius: 5,
+          showLine: false,
+          type: 'scatter'
+        },
+        {
+          label: 'Fitted model',
+          data: modelCurve,
+          borderColor: CHART_COLOR_MODEL,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          showLine: true,
+          type: 'line'
+        }
+      ];
+
+      const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: { position: 'top' },
+          title: {
+            display: true,
+            text: 'Nominal Stress (σ) vs Stretch (λ)',
+            font: { size: 16, weight: 'bold' }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const x = ctx.raw?.x ?? ctx.parsed.x;
+                const y = ctx.raw?.y ?? ctx.parsed.y;
+                return `λ=${x.toFixed(3)}, σ=${y.toFixed(3)} ${stressUnit}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            title: { display: true, text: 'Stretch, λ', font: { weight: 'bold' } },
+            min: 1.0
+          },
+          y: {
+            type: 'linear',
+            title: { display: true, text: `Nominal Stress, σ (${stressUnit})`, font: { weight: 'bold' } },
+            grace: '5%'
+          }
+        }
+      };
+
+      if (stressStrainChart) {
+        stressStrainChart.data.datasets = datasets;
+        stressStrainChart.options = options;
+        stressStrainChart.update();
+      } else {
+        stressStrainChart = new Chart(ctx, { data: { datasets }, options });
+      }
+    }
+
+    // -----------------------------
+    // Results cards
+    // -----------------------------
+    function displayResults(modelName, params, R2) {
+      const outputDiv = document.getElementById('resultsOutput');
+      const isMR = modelName === 'mooney_rivlin';
+      const modelTitle = isMR ? '2‑Term Mooney–Rivlin' : 'Neo‑Hookean';
+      const modelEq   = isMR
+        ? '\\(\\sigma = 2(\\lambda - \\lambda^{-2})(C_1 + C_2\\,\\lambda^{-1})\\)'
+        : '\\(\\sigma = 2C_1(\\lambda - \\lambda^{-2})\\)';
+
+      // Small-strain shear modulus info
+      const G_small = isMR ? 2*(params.C1 + params.C2) : 2*params.C1;
+
+      let html = `
+        <div class="param-result p-4 bg-blue-50 border-l-4 border-primary rounded-xl">
+          <h3 class="text-lg font-bold text-primary">${modelTitle} Model</h3>
+          <p class="text-sm text-gray-700">${modelEq}</p>
+        </div>
+
+        <div class="param-result p-4 bg-green-50 border-l-4 border-secondary rounded-xl">
+          <p class="text-lg font-semibold text-secondary">Goodness of fit (R²)</p>
+          <p class="text-2xl font-extrabold text-secondary">${R2.toFixed(4)}</p>
+          <p class="text-xs text-gray-600">Closer to 1.0 indicates a better fit.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="param-result p-4 bg-gray-50 border-l-4 border-gray-300 rounded-xl">
+            <p class="text-sm font-medium text-gray-700">C₁</p>
+            <p class="text-2xl font-extrabold text-gray-800">${params.C1.toFixed(6)}</p>
+            <p class="text-xs text-gray-600">Same units as stress.</p>
+          </div>
+
+          ${isMR ? `
+          <div class="param-result p-4 bg-gray-50 border-l-4 border-gray-300 rounded-xl">
+            <p class="text-sm font-medium text-gray-700">C₂</p>
+            <p class="text-2xl font-extrabold text-gray-800">${params.C2.toFixed(6)}</p>
+            <p class="text-xs text-gray-600">Same units as stress.</p>
+          </div>` : ''}
+        </div>
+
+        <div class="param-result p-4 bg-yellow-50 border-l-4 border-amber-400 rounded-xl">
+          <p class="text-sm font-medium text-gray-700">Estimated small‑strain shear modulus, G ≈ ${isMR ? '2(C₁+C₂)' : '2C₁'}</p>
+          <p class="text-xl font-bold text-gray-800">${G_small.toFixed(6)}</p>
+        </div>
+      `;
+
+      outputDiv.innerHTML = html;
+
+      // Typeset Math
+      if (window.MathJax?.typesetPromise) {
+        MathJax.typesetPromise([outputDiv]).catch(() => {});
+      }
+    }
+
+    // -----------------------------
+    // Abaqus *HYPERELASTIC snippet
+    // -----------------------------
+    function renderAbaqusSnippet(modelName, params, stressUnit) {
+      const div = document.getElementById('abaqusSnippet');
+      const isMR = modelName === 'mooney_rivlin';
+
+      // In Abaqus incompressible Neo-Hookean uses C10; Mooney-Rivlin uses C10=C1, C01=C2.
+      const txt = isMR
+        ? `*MATERIAL, NAME=HYPERELASTIC_MR
+*HYPERELASTIC, MOONEY-RIVLIN
+${params.C1.toFixed(6)}, ${params.C2.toFixed(6)}
+** Note: assumes incompressible; provide D1 if compressible is required.`
+        : `*MATERIAL, NAME=HYPERELASTIC_NH
+*HYPERELASTIC, NEO HOOKE
+${params.C1.toFixed(6)}
+** Note: assumes incompressible; add volumetric term (D1) if compressible is required.`;
+
+      div.innerHTML = `
+        <div class="mt-3">
+          <h3 class="text-sm font-semibold text-gray-700">Abaqus keyword snippet (${stressUnit} units):</h3>
+          <pre class="mt-2 p-3 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-auto">${txt}</pre>
+        </div>`;
+    }
+
+    // -----------------------------
+    // Export / copy helpers
+    // -----------------------------
+    function copyText(text) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+
+    function downloadFile(filename, content, mime='text/plain') {
+      const blob = new Blob([content], { type: mime });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // -----------------------------
+    // Event wiring
+    // -----------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+      const dataArea   = document.getElementById('dataInputArea');
+      const fitButton  = document.getElementById('fitButton');
+      const sampleBtn  = document.getElementById('sampleButton');
+      const clearBtn   = document.getElementById('clearButton');
+      const csvFile    = document.getElementById('csvFile');
+      const copyBtn    = document.getElementById('copyParams');
+      const dlJSON     = document.getElementById('downloadJSON');
+      const dlCSV      = document.getElementById('downloadCSV');
+      const dlPNG      = document.getElementById('downloadPNG');
+      const resetZoom  = document.getElementById('resetZoom');
+
+      // Restore persisted settings
+      try {
+        const s = localStorage.getItem(LS_KEY_DATA);       if (s) dataArea.value = s;
+        const it = localStorage.getItem(LS_KEY_INPUT_TYPE);if (it) document.getElementById('inputType').value = it;
+        const su = localStorage.getItem(LS_KEY_STRESS_UNIT);if (su) document.getElementById('stressUnit').value = su;
+        const m  = localStorage.getItem(LS_KEY_MODEL);
+        if (m) {
+          const rb = document.querySelector(`input[name="model"][value="${m}"]`);
+          if (rb) rb.checked = true;
+        }
+      } catch {}
+
+      // Sample data
+      sampleBtn.addEventListener('click', () => {
+        dataArea.value = `# λ   σ(MPa)
+1.05  0.20
+1.10  0.45
+1.20  0.80
+1.50  1.50
+2.00  2.50
+3.00  4.00
+3.50  5.50
+4.00  8.00`;
+        runFitter();
+      });
+
+      // Clear
+      clearBtn.addEventListener('click', () => {
+        dataArea.value = '';
+        renderParseSummary({ parsed: 0, skipped: 0, total: 0 });
+        updateChart([], []);
+        document.getElementById('resultsOutput').innerHTML = '<p class="text-gray-500">Paste data and click FIT.</p>';
+        document.getElementById('abaqusSnippet').innerHTML = '';
+      });
+
+      // CSV upload
+      csvFile.addEventListener('change', (evt) => {
+        const file = evt.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          dataArea.value = String(e.target.result || '');
+          runFitter();
+        };
+        reader.readAsText(file);
+      });
+
+      // Fit
+      fitButton.addEventListener('click', runFitter);
+
+      // Copy parameters
+      copyBtn.addEventListener('click', () => {
+        const text = document.getElementById('resultsOutput').innerText.trim();
+        if (text) copyText(text);
+      });
+
+      // Download JSON
+      dlJSON.addEventListener('click', () => {
+        const model = document.querySelector('input[name="model"]:checked').value;
+        // Extract numbers from DOM for simplicity
+        const nums = Array.from(document.querySelectorAll('#resultsOutput .param-result p'))
+          .map(p => p.textContent).join('\n');
+        downloadFile('hyperelastic_params.json', JSON.stringify({ model, text: nums }, null, 2), 'application/json');
+      });
+
+      // Download CSV
+      dlCSV.addEventListener('click', () => {
+        const rows = [];
+        const cards = document.querySelectorAll('#resultsOutput .param-result');
+        cards.forEach(card => rows.push(card.innerText.replace(/\s+/g, ' ').trim()));
+        downloadFile('hyperelastic_params.csv', rows.join('\n'), 'text/csv');
+      });
+
+      // Chart PNG
+      dlPNG.addEventListener('click', () => {
+        if (!stressStrainChart) return;
+        const url = stressStrainChart.toBase64Image();
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'stress_vs_stretch.png';
+        a.click();
+      });
+
+      // Reset zoom (placeholder for future zoom plugin)
+      resetZoom.addEventListener('click', () => {
+        if (!stressStrainChart) return;
+        stressStrainChart.reset();
+      });
+
+      // Initial run (if data present)
+      if (dataArea.value.trim().length) {
+        runFitter();
+      } else {
+        // seed with your example for quick start
+        document.getElementById('sampleButton').click();
+      }
+    });
+  </script>
 </body>
 </html>
